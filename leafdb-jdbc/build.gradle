@@ -1,0 +1,28 @@
+buildscript {
+    ext.kotlin_version = '1.1.4-2'
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'kotlin'
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+
+    compile project(path: ':leafdb-core')
+    compile 'org.xerial:sqlite-jdbc:3.20.0'
+
+    testCompile 'junit:junit:4.12'
+
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+}
+
+
+
+repositories {
+    jcenter()
+}

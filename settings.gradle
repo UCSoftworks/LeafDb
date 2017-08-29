@@ -1,0 +1,1 @@
+include ':leafdb-android', ':leafdb-jdbc', ':leafdb-core', ':sample-jdbc', ':sample-jdbc-java'
