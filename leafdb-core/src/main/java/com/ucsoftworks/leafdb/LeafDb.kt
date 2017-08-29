@@ -4,6 +4,7 @@ import com.ucsoftworks.leafdb.dsl.AggregateFunction
 import com.ucsoftworks.leafdb.dsl.Condition
 import com.ucsoftworks.leafdb.dsl.Field
 import com.ucsoftworks.leafdb.querying.*
+import com.ucsoftworks.leafdb.serializer.NullMergeStrategy
 import com.ucsoftworks.leafdb.serializer.Serializer
 import com.ucsoftworks.leafdb.wrapper.ILeafDbProvider
 import querying.SelectQueryBuilder
@@ -17,7 +18,7 @@ class LeafDb(internal val leafDbProvider: ILeafDbProvider) {
 
     fun random() = LeafDbStringQuery("SELECT random();", leafDbProvider).map(Long::class.java)
 
-    fun version() = LeafDbStringQuery("SELECT sqlite_version();", leafDbProvider)
+    fun engineVersion() = LeafDbStringQuery("SELECT sqlite_version();", leafDbProvider)
 
     fun isJson(doc: String): Boolean {
         val valid = LeafDbStringQuery("SELECT json_valid(${doc.sqlValue});", leafDbProvider).execute()
@@ -82,7 +83,7 @@ class LeafDb(internal val leafDbProvider: ILeafDbProvider) {
                 if (count == 0L)
                     entryUpdate(table, document, innerDocument, notifySubscribers, this::getInsertSql).execute()
                 else
-                    entryUpdate(table, document, innerDocument, notifySubscribers) { t, d -> getUpdateSql(t, d, pKey equal getInnerDocument(d, pKey)) }.execute()
+                    entryUpdate(table, document, innerDocument, notifySubscribers) { t, d -> getUpdateSql(t, d, getInnerDocConditionSql(pKey, document, innerDocument)) }.execute()
             }
 
     private fun getInnerDocConditionSql(pKey: Field, document: Any, innerDocument: Field?) =
@@ -90,18 +91,18 @@ class LeafDb(internal val leafDbProvider: ILeafDbProvider) {
 
 
     fun partialUpdate(table: String, document: Any, condition: Condition) = partialUpdate(table, document, condition, null, true)
-    fun partialUpdate(table: String, document: Any, condition: Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    fun partialUpdate(table: String, document: Any, condition: Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbModificationQuery =
             LeafDbModificationBlockQuery {
                 val conditionSql = getConditionBlock(condition)
-                partialUpdate(table, document, conditionSql, innerDocument, notifySubscribers)
+                partialUpdate(table, document, conditionSql, innerDocument, notifySubscribers, nullMergeStrategy)
 
             }
 
     fun partialUpdate(table: String, document: Any, pKey: Field) = partialUpdate(table, document, pKey, null, true)
-    fun partialUpdate(table: String, document: Any, pKey: Field, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    fun partialUpdate(table: String, document: Any, pKey: Field, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbModificationQuery =
             LeafDbModificationBlockQuery {
                 val conditionSql = getInnerDocConditionSql(pKey, document, innerDocument)
-                partialUpdate(table, document, conditionSql, innerDocument, notifySubscribers)
+                partialUpdate(table, document, conditionSql, innerDocument, notifySubscribers, nullMergeStrategy)
             }
 
     fun insertAll(table: String, documents: Any, pathToArray: Field = Field()) = insertAll(table, documents, pathToArray, null, true)
@@ -134,26 +135,26 @@ class LeafDb(internal val leafDbProvider: ILeafDbProvider) {
                     notifySubscribers)
 
     fun partialUpdateAll(table: String, documents: Any, pKey: Field) = partialUpdateAll(table, documents, pKey, Field(), null, true)
-    fun partialUpdateAll(table: String, documents: Any, pKey: Field, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    fun partialUpdateAll(table: String, documents: Any, pKey: Field, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbModificationQuery =
             bulkUpdate(table,
                     extractDocuments(documents, pathToArray),
-                    { partialUpdate(table, it, pKey, innerDocument, false).execute() },
+                    { partialUpdate(table, it, pKey, innerDocument, false, nullMergeStrategy).execute() },
                     notifySubscribers)
 
     fun <T : Any> partialUpdateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?) = partialUpdateAll(table, documents, predicate, null, true)
-    fun <T : Any> partialUpdateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    fun <T : Any> partialUpdateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbModificationQuery =
             bulkUpdate(table,
                     { documents },
-                    { partialUpdate(table, it, predicate(it), innerDocument, false).execute() },
+                    { partialUpdate(table, it, predicate(it), innerDocument, false, nullMergeStrategy).execute() },
                     notifySubscribers)
 
-    private fun partialUpdate(table: String, document: Any, conditionSql: String, innerDocument: Field?, notifySubscribers: Boolean = true) {
+    private fun partialUpdate(table: String, document: Any, conditionSql: String, innerDocument: Field?, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION) {
         val readableDb = leafDbProvider.readableDb
         val originals = readableDb.selectQuery("SELECT id, doc FROM $table $conditionSql;").collectStrings(2)
         readableDb.close()
         originals.forEach { (first, second) ->
             entryUpdate(table, document, innerDocument, notifySubscribers) { t, d ->
-                getUpdateSql(t, serializer.merge(d, second), Condition("id = $first"))
+                getUpdateSql(t, serializer.merge(d, second, nullMergeStrategy), Condition("id = $first"))
             }.execute()
         }
     }

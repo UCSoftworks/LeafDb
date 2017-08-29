@@ -26,7 +26,7 @@ class Serializer {
         val newObject = gson.fromJson(new, JsonObject::class.java)
         val oldObject = gson.fromJson(old, JsonObject::class.java)
 
-        mergeJson(newObject, oldObject)
+        mergeJson(newObject, oldObject, nullMergeStrategy)
 
         return gson.toJson(oldObject)
     }

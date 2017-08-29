@@ -27,7 +27,7 @@ fun main(args: Array<String>) {
 
     leafDb.partialUpdate(Tables.TEST.tableName, mapOf("t" to 4), I equal 5).execute()
 
-    System.out.println(leafDb.version().execute())
+    System.out.println(leafDb.engineVersion().execute())
 
     System.out.println(leafDb.select(Tables.TEST.tableName).findAs(S1::class.java).execute())
 

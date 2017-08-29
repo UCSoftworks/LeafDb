@@ -30,9 +30,9 @@ public class Sample {
             }
         }).execute();
 
-        final List<SampleData> execute = leafDb.select(TABLE_TEST).where(A.plus(B).greaterThan(5)).findAs(SampleData.class).execute();
+        final List<SampleData> dbData = leafDb.select(TABLE_TEST).where(A.plus(B).greaterThan(5)).findAs(SampleData.class).execute();
 
-        System.out.println(execute);
+        System.out.println(dbData);
     }
 
     private static class SampleData {
