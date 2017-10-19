@@ -76,7 +76,7 @@ val list = leafDb
         .execute()
 
 //Async call with Rx
- val subscribtion = leafDb
+val subscribtion = leafDb
          .select("SampleTable")
          .distinct()
          .field(Field("path", "to", "required", "inner", "doc"))

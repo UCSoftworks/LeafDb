@@ -7,6 +7,7 @@ import com.ucsoftworks.leafdb.dsl.Field;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.ucsoftworks.leafdb.dsl.FieldExtensionsKt;
 import kotlin.jvm.functions.Function1;
 
 public class Sample {
@@ -20,6 +21,8 @@ public class Sample {
         leafDb.insertOrUpdate(TABLE_TEST, new SampleData(1, 2), A).execute();
         leafDb.insertOrUpdate(TABLE_TEST, new SampleData(3, 4), A).execute();
         leafDb.insertOrUpdate(TABLE_TEST, new SampleData(5, 6), A).execute();
+
+        final Field f = FieldExtensionsKt.minus(5, A);
 
         leafDb.updateAll(TABLE_TEST, new LinkedList<SampleData>() {{
             add(new SampleData(3, 3));

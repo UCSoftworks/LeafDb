@@ -1,6 +1,6 @@
 package com.ucsoftworks.leafdb.querying
 
-import com.ucsoftworks.leafdb.collectStrings
+import com.ucsoftworks.leafdb.collectIndexedStrings
 import com.ucsoftworks.leafdb.wrapper.ILeafDbProvider
 import io.reactivex.Single
 
@@ -13,7 +13,7 @@ class LeafDbStringListQuery internal constructor(internal val query: String, pri
     fun execute(): List<String> {
         val readableDb = leafDbProvider.readableDb
         val cursor = readableDb.selectQuery(query)
-        val collectStrings = cursor.collectStrings(1)
+        val collectStrings = cursor.collectIndexedStrings(1)
         readableDb.close()
         return collectStrings.map { it.second }
     }

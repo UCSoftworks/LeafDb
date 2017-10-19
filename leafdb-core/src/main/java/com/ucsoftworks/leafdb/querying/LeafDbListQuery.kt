@@ -1,6 +1,6 @@
 package com.ucsoftworks.leafdb.querying
 
-import com.ucsoftworks.leafdb.collectStrings
+import com.ucsoftworks.leafdb.collectIndexedStrings
 import com.ucsoftworks.leafdb.serializer.Serializer
 import com.ucsoftworks.leafdb.wrapper.ILeafDbProvider
 import io.reactivex.BackpressureStrategy
@@ -20,7 +20,7 @@ class LeafDbListQuery<T> internal constructor(private val table: String, private
         val readableDb = leafDbProvider.readableDb
         val list = readableDb
                 .selectQuery(query)
-                .collectStrings(DOC_POSITION)
+                .collectIndexedStrings(DOC_POSITION)
                 .map { serializer.getObjectFromJson(it.second, clazz) }
         readableDb.close()
         return list
@@ -40,7 +40,7 @@ class LeafDbListQuery<T> internal constructor(private val table: String, private
             try {
                 it.onNext(db
                         .selectQuery(query)
-                        .collectStrings(DOC_POSITION)
+                        .collectIndexedStrings(DOC_POSITION)
                         .map { serializer.getObjectFromJson(it.second, clazz) }
                 )
             } catch (e: Exception) {

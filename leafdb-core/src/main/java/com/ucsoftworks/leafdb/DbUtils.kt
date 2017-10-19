@@ -42,7 +42,7 @@ internal val Any?.sqlValue: String
     }
 
 
-internal fun ILeafDbCursor?.collectStrings(position: Int = 1): List<Pair<Long, String>> {
+internal fun ILeafDbCursor?.collectIndexedStrings(position: Int = 1): List<Pair<Long, String>> {
     val strings = mutableListOf<Pair<Long, String>>()
 
     try {
