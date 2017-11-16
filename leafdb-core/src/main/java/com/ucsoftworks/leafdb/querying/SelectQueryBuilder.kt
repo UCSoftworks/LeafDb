@@ -2,7 +2,7 @@ package querying
 
 import com.ucsoftworks.leafdb.dsl.Condition
 import com.ucsoftworks.leafdb.dsl.Field
-import com.ucsoftworks.leafdb.querying.LeafDbListQuery
+import com.ucsoftworks.leafdb.querying.internal.LeafDbListQuery
 import com.ucsoftworks.leafdb.dsl.SortOrder
 import com.ucsoftworks.leafdb.wrapper.ILeafDbProvider
 

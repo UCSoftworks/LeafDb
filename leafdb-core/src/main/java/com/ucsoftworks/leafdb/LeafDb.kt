@@ -4,6 +4,10 @@ import com.ucsoftworks.leafdb.dsl.AggregateFunction
 import com.ucsoftworks.leafdb.dsl.Condition
 import com.ucsoftworks.leafdb.dsl.Field
 import com.ucsoftworks.leafdb.querying.*
+import com.ucsoftworks.leafdb.querying.internal.LeafDbModificationBlockQuery
+import com.ucsoftworks.leafdb.querying.internal.LeafDbModificationQuery
+import com.ucsoftworks.leafdb.querying.internal.LeafDbStringListQuery
+import com.ucsoftworks.leafdb.querying.internal.LeafDbStringQuery
 import com.ucsoftworks.leafdb.serializer.NullMergeStrategy
 import com.ucsoftworks.leafdb.serializer.Serializer
 import com.ucsoftworks.leafdb.wrapper.ILeafDbProvider
@@ -16,9 +20,9 @@ class LeafDb(internal val leafDbProvider: ILeafDbProvider) {
 
     private val serializer = Serializer()
 
-    fun random() = LeafDbStringQuery(getRandomQuery(), leafDbProvider).map(Long::class.java)
+    fun random(): ILeafDbQuery<Long> = LeafDbStringQuery(getRandomQuery(), leafDbProvider).map(Long::class.java)
 
-    fun engineVersion() = LeafDbStringQuery(getEngineVersionQuery(), leafDbProvider)
+    fun engineVersion(): ILeafDbQuery<String?> = LeafDbStringQuery(getEngineVersionQuery(), leafDbProvider)
 
     fun isJson(doc: String): Boolean {
         val valid = LeafDbStringQuery(getJsonValidQuery(doc), leafDbProvider).execute()
@@ -27,36 +31,36 @@ class LeafDb(internal val leafDbProvider: ILeafDbProvider) {
         return false
     }
 
-    fun getInnerDocument(json: String, path: Field) =
+    fun getInnerDocument(json: String, path: Field): ILeafDbQuery<String?> =
             LeafDbStringQuery(getInnerDocumentSql(path, json), leafDbProvider)
 
 
-    fun getInnerArray(json: String, path: Field) =
+    fun getInnerArray(json: String, path: Field): ILeafDbQuery<List<String>> =
             LeafDbStringListQuery(getInnerArrayQuery(path, json), leafDbProvider)
 
     fun select(table: String) = SelectQueryBuilder(table, leafDbProvider)
 
-    fun count(table: String) = count(table, null)
+    @JvmOverloads
     fun count(table: String, condition: Condition? = null) = LeafDbStringQuery(getCountQuery(table, condition), leafDbProvider).map(Long::class.java)
 
-    fun aggregate(table: String, field: Field, aggregateFunction: AggregateFunction) = aggregate(table, field, aggregateFunction, null)
-    fun aggregate(table: String, field: Field, aggregateFunction: AggregateFunction, condition: Condition? = null) =
+    @JvmOverloads
+    fun aggregate(table: String, field: Field, aggregateFunction: AggregateFunction, condition: Condition? = null): ILeafDbQuery<Double> =
             LeafDbStringQuery(getAggregationQuery(aggregateFunction, field, table, condition), leafDbProvider).map(Double::class.java)
 
-    fun <T> aggregate(table: String, field: Field, aggregateFunction: AggregateFunction, clazz: Class<T>) = aggregate(table, field, aggregateFunction, clazz, null)
-    fun <T> aggregate(table: String, field: Field, aggregateFunction: AggregateFunction, clazz: Class<T>, condition: Condition? = null) =
+    @JvmOverloads
+    fun <T> aggregate(table: String, field: Field, aggregateFunction: AggregateFunction, clazz: Class<T>, condition: Condition? = null): ILeafDbQuery<T> =
             LeafDbStringQuery(getAggregationQuery(aggregateFunction, field, table, condition), leafDbProvider).map(clazz)
 
-    fun delete(table: String) = delete(table, null, true)
-    fun delete(table: String, condition: Condition? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery = LeafDbModificationQuery(table, getDeleteQuery(table, condition), leafDbProvider, notifySubscribers)
+    @JvmOverloads
+    fun delete(table: String, condition: Condition? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> = LeafDbModificationQuery(table, getDeleteQuery(table, condition), leafDbProvider, notifySubscribers)
 
 
-    fun insert(table: String, document: Any) = insert(table, document, null, true)
-    fun insert(table: String, document: Any, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun insert(table: String, document: Any, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> =
             entryUpdate(table, document, innerDocument, notifySubscribers, this::getInsertSql)
 
 
-    private fun entryUpdate(table: String, document: Any, innerDocument: Field? = null, notifySubscribers: Boolean, sqlGenerator: (table: String, doc: String) -> String): ILeafDbModificationQuery {
+    private fun entryUpdate(table: String, document: Any, innerDocument: Field? = null, notifySubscribers: Boolean, sqlGenerator: (table: String, doc: String) -> String): ILeafDbQuery<Unit> {
         return LeafDbModificationBlockQuery {
             val doc = getDoc(document, innerDocument)
             LeafDbModificationQuery(table, sqlGenerator(table, doc), leafDbProvider, notifySubscribers).execute()
@@ -70,18 +74,18 @@ class LeafDb(internal val leafDbProvider: ILeafDbProvider) {
         return doc
     }
 
-    fun update(table: String, document: Any, condition: Condition?) = update(table, document, condition, null, true)
-    fun update(table: String, document: Any, condition: Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun update(table: String, document: Any, condition: Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> =
             entryUpdate(table, document, innerDocument, notifySubscribers) { t, d -> getUpdateSql(t, d, condition) }
 
     //todo generalize
 
-    fun update(table: String, document: Any, pKey: Field) = update(table, document, pKey, null, true)
-    fun update(table: String, document: Any, pKey: Field, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun update(table: String, document: Any, pKey: Field, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> =
             entryUpdate(table, document, innerDocument, notifySubscribers) { t, d -> getUpdateSql(t, d, getInnerDocConditionSql(pKey, document, innerDocument)) }
 
-    fun insertOrUpdate(table: String, document: Any, pKey: Field) = insertOrUpdate(table, document, pKey, null, true)
-    fun insertOrUpdate(table: String, document: Any, pKey: Field, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun insertOrUpdate(table: String, document: Any, pKey: Field, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> =
             LeafDbModificationBlockQuery {
                 val count = LeafDbStringQuery(getDocCountQuery(table, pKey, document, innerDocument), leafDbProvider).map(Long::class.java).execute()!!
                 if (count == 0L)
@@ -92,56 +96,55 @@ class LeafDb(internal val leafDbProvider: ILeafDbProvider) {
 
     //todo generalize
 
-    fun partialUpdate(table: String, document: Any, condition: Condition) = partialUpdate(table, document, condition, null, true)
-    fun partialUpdate(table: String, document: Any, condition: Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun partialUpdate(table: String, document: Any, condition: Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbQuery<Unit> =
             LeafDbModificationBlockQuery {
                 conditionalPartialUpdate(table, document, condition, innerDocument, notifySubscribers, nullMergeStrategy)
             }
 
-    fun partialUpdate(table: String, document: Any, pKey: Field) = partialUpdate(table, document, pKey, null, true)
-    fun partialUpdate(table: String, document: Any, pKey: Field, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun partialUpdate(table: String, document: Any, pKey: Field, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbQuery<Unit> =
             LeafDbModificationBlockQuery {
                 pKeyPartialUpdate(table, document, pKey, innerDocument, notifySubscribers, nullMergeStrategy)
             }
 
-    fun insertAll(table: String, documents: Any, pathToArray: Field = Field()) = insertAll(table, documents, pathToArray, null, true)
-    fun insertAll(table: String, documents: Any, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun insertAll(table: String, documents: Any, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> =
             bulkUpdate(table,
                     extractDocuments(documents, pathToArray),
                     { insert(table, it, innerDocument, false).execute() },
                     notifySubscribers)
 
-    fun insertOrUpdateAll(table: String, documents: Any, pKey: Field) = insertOrUpdateAll(table, documents, pKey, Field(), null, true)
-    fun insertOrUpdateAll(table: String, documents: Any, pKey: Field, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun insertOrUpdateAll(table: String, documents: Any, pKey: Field, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> =
             bulkUpdate(table,
                     extractDocuments(documents, pathToArray),
                     { insertOrUpdate(table, it, pKey, innerDocument, false).execute() },
                     notifySubscribers)
 
-    fun updateAll(table: String, documents: Any, pKey: Field) = updateAll(table, documents, pKey, Field(), null, true)
-    fun updateAll(table: String, documents: Any, pKey: Field, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun updateAll(table: String, documents: Any, pKey: Field, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> =
             bulkUpdate(table,
                     extractDocuments(documents, pathToArray),
                     { update(table, it, pKey, innerDocument, false).execute() },
                     notifySubscribers)
 
-
-    fun <T : Any> updateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?) = updateAll(table, documents, predicate, null, true)
-    fun <T : Any> updateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun <T : Any> updateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true): ILeafDbQuery<Unit> =
             bulkUpdate(table,
                     { documents },
                     { update(table, it, predicate(it), innerDocument, false).execute() },
                     notifySubscribers)
 
-    fun partialUpdateAll(table: String, documents: Any, pKey: Field) = partialUpdateAll(table, documents, pKey, Field(), null, true)
-    fun partialUpdateAll(table: String, documents: Any, pKey: Field, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun partialUpdateAll(table: String, documents: Any, pKey: Field, pathToArray: Field = Field(), innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbQuery<Unit> =
             bulkUpdate(table,
                     extractDocuments(documents, pathToArray),
                     { partialUpdate(table, it, pKey, innerDocument, false, nullMergeStrategy).execute() },
                     notifySubscribers)
 
-    fun <T : Any> partialUpdateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?) = partialUpdateAll(table, documents, predicate, null, true)
-    fun <T : Any> partialUpdateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbModificationQuery =
+    @JvmOverloads
+    fun <T : Any> partialUpdateAll(table: String, documents: Iterable<T>, predicate: (T) -> Condition?, innerDocument: Field? = null, notifySubscribers: Boolean = true, nullMergeStrategy: NullMergeStrategy = NullMergeStrategy.TAKE_DESTINATION): ILeafDbQuery<Unit> =
             bulkUpdate(table,
                     { documents },
                     { partialUpdate(table, it, predicate(it), innerDocument, false, nullMergeStrategy).execute() },

@@ -2,6 +2,7 @@ package com.ucsoftworks.leafdb
 
 import com.ucsoftworks.leafdb.dsl.Field
 import java.util.*
+import com.ucsoftworks.leafdb.dsl.*
 
 /**
  * Created by Pasenchuk Victor on 28/08/2017
@@ -37,5 +38,15 @@ fun main(args: Array<String>) {
         leafDb.insert(Tables.LOAD.tableName, s).execute()
 
     System.out.println(Date())
+
+
+    val a = Field("a")
+    val b = Field("b")
+
+    val c = a + b;
+    val d = 5 - c;
+
+    leafDb.updateAll(Tables.TEST.tableName, listOf(S(1, "a"), S(2, "b"))) { s -> d.equal(s.i) }.execute()
+
 
 }

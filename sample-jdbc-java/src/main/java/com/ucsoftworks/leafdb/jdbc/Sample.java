@@ -3,12 +3,11 @@ package com.ucsoftworks.leafdb.jdbc;
 import com.ucsoftworks.leafdb.LeafDb;
 import com.ucsoftworks.leafdb.dsl.Condition;
 import com.ucsoftworks.leafdb.dsl.Field;
+import com.ucsoftworks.leafdb.dsl.FieldExtensionsKt;
+import kotlin.jvm.functions.Function1;
 
 import java.util.LinkedList;
 import java.util.List;
-
-import com.ucsoftworks.leafdb.dsl.FieldExtensionsKt;
-import kotlin.jvm.functions.Function1;
 
 public class Sample {
     private static final String TABLE_TEST = "test";

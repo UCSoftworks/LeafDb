@@ -1,16 +1,15 @@
-package com.ucsoftworks.leafdb.querying
+package com.ucsoftworks.leafdb.querying.internal
 
 import com.ucsoftworks.leafdb.collectIndexedStrings
+import com.ucsoftworks.leafdb.querying.ILeafDbQuery
 import com.ucsoftworks.leafdb.wrapper.ILeafDbProvider
-import io.reactivex.Single
 
 /**
  * Created by Pasenchuk Victor on 19/08/2017
  */
-class LeafDbStringListQuery internal constructor(internal val query: String, private val leafDbProvider: ILeafDbProvider) {
+internal class LeafDbStringListQuery(internal val query: String, private val leafDbProvider: ILeafDbProvider) : ILeafDbQuery<List<String>> {
 
-
-    fun execute(): List<String> {
+    override fun execute(): List<String> {
         val readableDb = leafDbProvider.readableDb
         val cursor = readableDb.selectQuery(query)
         val collectStrings = cursor.collectIndexedStrings(1)
@@ -18,12 +17,5 @@ class LeafDbStringListQuery internal constructor(internal val query: String, pri
         return collectStrings.map { it.second }
     }
 
-    fun asSingle(): Single<List<String>> = Single.create {
-        try {
-            it.onSuccess(execute())
-        } catch (e: Throwable) {
-            it.onError(e)
-        }
-    }
 
 }
